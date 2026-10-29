@@ -1,0 +1,13 @@
+.git
+.gitignore
+data
+tests
+docs
+config
+examples
+__pycache__
+*.pyc
+*.eml
+*.sqlite
+.env
+.cashew-session.json

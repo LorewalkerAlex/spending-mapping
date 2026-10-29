@@ -58,6 +58,12 @@ SPENDING_DATA_DIR=/path/to/import-set python run-tests.py
 
 导入集里有 117 笔（90 个商户，合计 -5983.59）在旧映射表中没有分类。它们落到兜底分类「其他」并计入待审队列——这是审核界面的第一批工作，不是数据错误。`tests/test_import_set.py` 把这个基线固化成了断言，变化时会失败提醒。
 
-## 部署（后续步骤）
+## 部署（Docker Compose）
 
-尚未开始。计划：推送 Git → 服务器拉取到持久路径 → `.env` 配置凭据（`examples/.env.example` 为模板，真实 `.env` 不入库）→ systemd timer 定时拉取。服务器侧的临时产物遵循项目约定，统一放在 `/tmp/home-server-ops/<任务标识>-<唯一后缀>/`。
+与其它服务同形态：代码在 `/srv/apps/spending-mapping/`，数据 `/srv/persistent/data/spending/`，密钥 `/srv/persistent/secrets/spending/spending.env`。
+
+- `Dockerfile`：`python:3.12-slim`，无第三方依赖，入口 `python -m spending_mapping`
+- `compose.yaml`：`env_file` 指向密钥目录，`/srv/persistent/data/spending` 绑定到容器 `/data`，`restart: unless-stopped`
+- 常驻进程 + 内部轮询（`EMAIL_POLL_INTERVAL_SECONDS`），Docker 里没有 systemd timer
+
+目前入口只做「邮件拉取」；Cashew 同步（push/pull）是下一步，会加进同一个服务循环。密钥模板见 `examples/spending.env.example`，真实 `.env` 不入库。
