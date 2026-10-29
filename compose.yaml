@@ -7,7 +7,6 @@ services:
     image: spending-mapping:local
     restart: unless-stopped
     init: true
-    user: "${PUID:-1000}:${PGID:-1000}"
     env_file:
       - /srv/persistent/secrets/spending/spending.env
     environment:
