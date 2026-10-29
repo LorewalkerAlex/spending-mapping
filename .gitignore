@@ -1,0 +1,18 @@
+# 凭据与本地会话
+.env
+.cashew-session.json
+*.credentials
+.env.local
+
+# 数据与派生产物（真实账单、备份、缓存都不入库）
+data/
+*.eml
+*.sqlite
+*.sqlite3
+*.db
+backup-*.bin
+cache/
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
