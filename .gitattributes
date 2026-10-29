@@ -1,0 +1,4 @@
+# 统一用 LF，避免 Windows 提交后服务器上出现 CRLF
+* text=auto eol=lf
+*.png binary
+*.sqlite binary
