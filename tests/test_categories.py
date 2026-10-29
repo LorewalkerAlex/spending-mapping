@@ -5,11 +5,9 @@ from __future__ import annotations
 import unittest
 
 from spending_mapping.categories import (
-    UnknownCategoryError,
     load_categories,
-    load_category_map,
+    load_fallback_pk,
     load_wallet,
-    resolve_category,
 )
 
 
@@ -41,23 +39,12 @@ class CategoryTests(unittest.TestCase):
             self.assertTrue(category.pk.strip())
 
 
-class CategoryMapTests(unittest.TestCase):
-    def setUp(self):
-        self.mapping = load_category_map()
-        self.pks = {c.pk for c in load_categories()}
-
-    def test_every_target_pk_exists(self):
-        for name, pk in self.mapping.items():
-            self.assertIn(pk, self.pks, f"{name} → {pk} 不是有效分类")
-
-    def test_resolve_known(self):
-        self.assertEqual(resolve_category("餐饮美食", self.mapping), "1")
-        self.assertEqual(resolve_category("医疗健康", self.mapping),
-                         "acf73b07-5da1-4998-a5c0-1b17d5040e9d")
-
-    def test_resolve_unknown_raises(self):
-        with self.assertRaises(UnknownCategoryError):
-            resolve_category("不存在的分类", self.mapping)
+class FallbackTests(unittest.TestCase):
+    def test_fallback_is_other_category(self):
+        fallback = load_fallback_pk()
+        by_pk = {c.pk: c for c in load_categories()}
+        self.assertIn(fallback, by_pk)
+        self.assertEqual(by_pk[fallback].name, "其他")
 
 
 class WalletTests(unittest.TestCase):

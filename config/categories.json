@@ -6,6 +6,7 @@
     "currency": "cny",
     "decimals": 2
   },
+  "fallback": "09d76ff3-cb67-425d-a355-0af178bea2a4",
   "categories": [
     { "pk": "1", "name": "三餐", "income": false, "order": 0, "colour": "0xff607d8b", "icon": "cutlery.png" },
     { "pk": "2", "name": "杂货", "income": false, "order": 1, "colour": "0xff4caf50", "icon": "groceries.png" },

@@ -25,8 +25,7 @@ src/spending_mapping/
   timestamps.py      推送时间戳序列（严格递增、复现服务端夹紧）
 tests/               纯本地测试，无需网络与服务器
 config/
-  categories.json    14 个分类与唯一钱包（来自客户端备份，2026-10-29）
-  category-map.json  旧 18 类 → Cashew pk 的对照，含兜底分类
+  categories.json    14 个分类与唯一钱包（来自客户端备份，2026-10-29），含兜底分类 pk
 ```
 
 ## 本地测试
@@ -56,7 +55,7 @@ DATA_DIR=/path/to/import-set python run-tests.py
 
 ## 未映射交易
 
-导入集里有 117 笔（90 个商户，合计 -5983.59）在旧映射表中没有分类。它们落到兜底分类「其他」并计入待审队列——这是审核界面的第一批工作，不是数据错误。`tests/test_import_set.py` 把这个基线固化成了断言，变化时会失败提醒。
+从零起步（不继承旧 merchants/categories 映射）：所有交易的分类初始都落兜底「其他」，名字用解析器的 `display_name`。人工审核逐步把「描述 → 分类」写进 `review-log.jsonl`，越审越少。审核粒度支持批量（按 description）与单笔。
 
 ## 部署（Docker Compose）
 

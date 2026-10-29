@@ -51,9 +51,11 @@ def build_payload(
     modified_ms: int,
     method_added: int | None = METHOD_ADDED_EMAIL,
     income: bool = False,
+    name: str | None = None,
 ) -> dict:
     created_ms = date_to_ms(txn.date)
-    name = txn.merchant[:NAME_LIMIT]
+    resolved_name = name if name is not None else txn.merchant
+    name = resolved_name[:NAME_LIMIT]
     note = build_note(txn)[:NOTE_LIMIT]
     return {
         "transactionPk": txn.source_record_id,
