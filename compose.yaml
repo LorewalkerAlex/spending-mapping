@@ -2,9 +2,7 @@ name: spending
 
 services:
   spending:
-    build:
-      context: .
-    image: spending:local
+    image: ghcr.io/lorewalkeralex/spending:latest
     restart: unless-stopped
     init: true
     env_file:
