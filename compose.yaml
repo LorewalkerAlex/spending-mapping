@@ -1,16 +1,14 @@
-name: spending-mapping
+name: spending
 
 services:
-  mapping:
+  spending:
     build:
       context: .
-    image: spending-mapping:local
+    image: spending:local
     restart: unless-stopped
     init: true
     env_file:
       - /srv/persistent/secrets/spending/spending.env
-    environment:
-      EVIDENCE_DIR: /data/evidence/cmb-email
     volumes:
       - type: bind
         source: /srv/persistent/data/spending

@@ -1,14 +1,13 @@
 """常驻服务：定时从邮箱拉取账单邮件，按 sha256 落盘。
 
 Docker 里没有 systemd timer，所以是"长驻进程 + 内部轮询"。启动先拉一次，
-之后每 EMAIL_POLL_INTERVAL_SECONDS 秒一轮。单轮失败只记日志，不退出。
+之后每 MAIL_POLL_INTERVAL_SECONDS 秒一轮。单轮失败只记日志，不退出。
 """
 
 from __future__ import annotations
 
 import logging
 import time
-from pathlib import Path
 
 from .config import MailPullConfig
 from .mail_pull import pull_cmb
@@ -25,7 +24,7 @@ def _run_once(cfg: MailPullConfig) -> None:
         mailbox=cfg.mailbox,
         subject_keyword=cfg.subject_keyword,
         since=cfg.since,
-        evidence_dir=Path(cfg.evidence_dir),
+        evidence_dir=cfg.evidence_dir,
     )
     if result.errors:
         logger.error("拉取完成但有错误：fetched=%d added=%d dup=%d errors=%s",

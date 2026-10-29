@@ -10,7 +10,7 @@ import unittest
 _REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 CANDIDATES = [
     pathlib.Path(p) if p else pathlib.Path()
-    for p in [os.environ.get("SPENDING_DATA_DIR")]
+    for p in [os.environ.get("DATA_DIR")]
     if p
 ]
 CANDIDATES.append(_REPO_ROOT / "data")
@@ -28,6 +28,6 @@ def require_import_set() -> pathlib.Path:
     found = _locate_import_set()
     if found is None:
         raise unittest.SkipTest(
-            "缺少 net-transactions.json；设置 SPENDING_DATA_DIR 指向包含它的目录"
+            "缺少 net-transactions.json；设置 DATA_DIR 指向包含它的目录"
         )
     return found

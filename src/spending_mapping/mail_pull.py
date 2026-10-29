@@ -10,7 +10,7 @@
   - 服务端 `SENTSINCE` 粗筛 + 客户端按主题关键词与 Date 头再复核
 
 凭据只从环境变量读，不落盘：
-  EMAIL_ADDR / EMAIL_AUTH_CODE（163 的授权码，不是登录密码）
+  MAIL_ADDR / MAIL_AUTH_CODE（163 的授权码，不是登录密码）
 """
 
 from __future__ import annotations
@@ -187,8 +187,8 @@ def pull_cmb(
 
 def credentials_from_env(environ: dict | None = None) -> tuple[str, str]:
     values = os.environ if environ is None else environ
-    address = values.get("EMAIL_ADDR", "").strip()
-    auth_code = values.get("EMAIL_AUTH_CODE", "").strip()
+    address = values.get("MAIL_ADDR", "").strip()
+    auth_code = values.get("MAIL_AUTH_CODE", "").strip()
     if not address or not auth_code:
-        raise RuntimeError("缺少 EMAIL_ADDR 或 EMAIL_AUTH_CODE 环境变量")
+        raise RuntimeError("缺少 MAIL_ADDR 或 MAIL_AUTH_CODE 环境变量")
     return address, auth_code

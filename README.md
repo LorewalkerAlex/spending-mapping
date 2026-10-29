@@ -40,7 +40,7 @@ python run-tests.py
 数据相关用例需要 `net-transactions.json`（真实交易，不入库）。默认找仓库内 `data/`，或用环境变量指向别处：
 
 ```bash
-SPENDING_DATA_DIR=/path/to/import-set python run-tests.py
+DATA_DIR=/path/to/import-set python run-tests.py
 ```
 
 缺失时这些用例会跳过而不是失败。
@@ -60,10 +60,11 @@ SPENDING_DATA_DIR=/path/to/import-set python run-tests.py
 
 ## 部署（Docker Compose）
 
-与其它服务同形态：代码在 `/srv/apps/spending-mapping/`，数据 `/srv/persistent/data/spending/`，密钥 `/srv/persistent/secrets/spending/spending.env`。
+命名约定：**服务名统一为 `spending`**（与 cashew/tududi/beszel 一致），仓库名 `spending-mapping`、Python 包 `spending_mapping` 只是项目标识，不参与服务器路径。
 
+- 代码 `/srv/apps/spending/`，数据 `/srv/persistent/data/spending/`，密钥 `/srv/persistent/secrets/spending/spending.env`
 - `Dockerfile`：`python:3.12-slim`，无第三方依赖，入口 `python -m spending_mapping`
-- `compose.yaml`：`env_file` 指向密钥目录，`/srv/persistent/data/spending` 绑定到容器 `/data`，`restart: unless-stopped`
-- 常驻进程 + 内部轮询（`EMAIL_POLL_INTERVAL_SECONDS`），Docker 里没有 systemd timer
+- `compose.yaml`：`name: spending`、服务与镜像名 `spending`，`env_file` 指向密钥目录，`/srv/persistent/data/spending` 绑定到容器 `/data`，`restart: unless-stopped`
+- 常驻进程 + 内部轮询（`MAIL_POLL_INTERVAL_SECONDS`），Docker 里没有 systemd timer
 
 目前入口只做「邮件拉取」；Cashew 同步（push/pull）是下一步，会加进同一个服务循环。密钥模板见 `examples/spending.env.example`，真实 `.env` 不入库。
