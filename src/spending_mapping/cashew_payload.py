@@ -26,7 +26,12 @@ METHOD_ADDED_EMAIL = 0
 
 
 def date_to_ms(date_text: str) -> int:
-    """`YYYY-MM-DD` → 当日 00:00（+08:00）的毫秒时间戳。"""
+    """`YYYY-MM-DD` → 当日 00:00（+08:00）的毫秒时间戳。
+
+    假设客户端在东八区渲染 `dateCreated`：Cashew 存的是绝对毫秒，客户端按设备时区
+    显示日期。若未来出现非东八区设备，这里的"当日零点"会偏一天，需改成按设备时区
+    或干脆存中午 12:00 规避跨日边界。当前家庭设备均在 +08:00，此假设成立。
+    """
     day = datetime.strptime(date_text, "%Y-%m-%d").replace(tzinfo=LOCAL_TZ)
     return int(day.timestamp() * 1000)
 
@@ -45,6 +50,7 @@ def build_payload(
     wallet_pk: str = "0",
     modified_ms: int,
     method_added: int | None = METHOD_ADDED_EMAIL,
+    income: bool = False,
 ) -> dict:
     created_ms = date_to_ms(txn.date)
     name = txn.merchant[:NAME_LIMIT]
@@ -61,7 +67,7 @@ def build_payload(
         "dateCreated": created_ms,
         "dateTimeModified": modified_ms,
         "originalDateDue": created_ms,
-        "income": False,
+        "income": income,
         "periodLength": 1,
         "reoccurrence": 3,
         "endDate": None,

@@ -6,14 +6,28 @@ import os
 import pathlib
 import unittest
 
-DEFAULT_DATA_DIR = pathlib.Path("F:/OtherProjects/cashew-deploy-20261027")
-DATA_DIR = pathlib.Path(os.environ.get("SPENDING_DATA_DIR", DEFAULT_DATA_DIR))
-IMPORT_SET = DATA_DIR / "net-transactions.json"
+# 数据目录从环境变量取；也允许放在仓库内 data/ 下。都不存在则相关用例跳过。
+_REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
+CANDIDATES = [
+    pathlib.Path(p) if p else pathlib.Path()
+    for p in [os.environ.get("SPENDING_DATA_DIR")]
+    if p
+]
+CANDIDATES.append(_REPO_ROOT / "data")
+
+
+def _locate_import_set() -> pathlib.Path | None:
+    for base in CANDIDATES:
+        candidate = base / "net-transactions.json"
+        if candidate.is_file():
+            return candidate
+    return None
 
 
 def require_import_set() -> pathlib.Path:
-    if not IMPORT_SET.is_file():
+    found = _locate_import_set()
+    if found is None:
         raise unittest.SkipTest(
-            f"缺少导入集 {IMPORT_SET}；设置 SPENDING_DATA_DIR 指向包含 net-transactions.json 的目录"
+            "缺少 net-transactions.json；设置 SPENDING_DATA_DIR 指向包含它的目录"
         )
-    return IMPORT_SET
+    return found

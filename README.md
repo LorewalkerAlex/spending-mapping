@@ -37,8 +37,7 @@ python run-tests.py
 
 只用标准库，不需要安装依赖。40 个用例覆盖：payload 字段契约（数量/类型/长度）、分类解析与兜底、时间戳单调性、导入集的守恒与覆盖。
 
-数据相关用例需要 `net-transactions.json`（真实交易，不入库）。默认读
-`F:/OtherProjects/cashew-deploy-20261027`，可用环境变量覆盖：
+数据相关用例需要 `net-transactions.json`（真实交易，不入库）。默认找仓库内 `data/`，或用环境变量指向别处：
 
 ```bash
 SPENDING_DATA_DIR=/path/to/import-set python run-tests.py

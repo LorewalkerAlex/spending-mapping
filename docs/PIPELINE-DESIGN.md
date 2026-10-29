@@ -26,7 +26,7 @@
 - 账单产生的交易 → `src_…`，两侧应一致
 - 用户手记的交易 → 客户端 UUID，只存在于 Cashew 侧 → 标记 `external`，只读
 - 只在应然侧 → 待新增（待推）
-- 两侧都有 → 逐字段比对，按 §7 裁决
+- 两侧都有 → 按 §7 判断是否覆盖（不逐字段比对）
 
 **关键事实**：Cashew 服务端是**变更中继**，`sync_records` 每行一条、只存最新值，没有全表快照接口。`pull?since=0` 拿到的是"被客户端推送过的所有行"。所以：
 
@@ -37,7 +37,7 @@
 ```
 mapping_source   auto | human_approved | human_edited        （谁定的 name/category）
 origin           bill | external                              （账单来的还是手记的）
-sync             new | pushed | dirty | remote_changed | conflict
+sync             new | pushed | dirty                          （与 Cashew 的差距）
 ```
 
 - `external` 的记录不参与映射，也不参与净额，仅在报表里作为"其他来源支出"展示
@@ -69,7 +69,7 @@ sync             new | pushed | dirty | remote_changed | conflict
     → 远端有变化的记录：更新本地实然值，按 §7 判定
     → 仅远端存在的记录：加入 external
   推送本批 dirty 记录（200 条/批）
-    → 成功后更新推送指纹，状态置 pushed
+    → 成功后状态置 pushed
 
 收到新邮件（pull 服务触发）：
   解析新增（只解析新文件）
@@ -87,7 +87,7 @@ sync             new | pushed | dirty | remote_changed | conflict
 
 字段定义来自 fork 的 `app/lib/database/tables.dart`（`@DataClassName('Transaction')`）。类型注意：`amount` 是 **double**，日期是**毫秒整数**，枚举是**整数索引**。
 
-状态图例：**业务** = 承载我们的语义；**固定** = 必须填但不表达业务；**待定** = 尚未决定。
+状态图例：**业务** = 承载我们的语义；**固定** = 必须填但不表达业务（全部已定，无待定项）。
 
 | # | 字段 | 类型/可空 | 我们的取值 | 状态 |
 | --- | --- | --- | --- | --- |
@@ -221,10 +221,10 @@ sync             new | pushed | dirty | remote_changed | conflict
 **待定（需要你拍板）**
 
 - 待审队列的置信阈值
-- 无推荐时的兜底（用清理后的描述 + 哪个分类）
 - 标注粒度：按 `description` 聚组，还是允许单条例外
-- `note` 是否保留原始描述（我倾向保留，截断到 120 字）
-- 是否把稳定的「商户名 → 分类」同步成 `associated_titles`（我倾向"只同步人工确认过的"，且默认精确匹配）
+- 是否把稳定的「商户名 → 分类」同步成 `associated_titles`（倾向"只同步人工确认过的"，默认精确匹配）
+
+已定（不再列为待定）：`note` 保留原始描述截断 200 字、未映射商户落「其他」兜底、`methodAdded=0`。
 
 ## 12. 落地顺序
 
