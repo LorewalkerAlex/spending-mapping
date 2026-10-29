@@ -31,3 +31,19 @@ def require_import_set() -> pathlib.Path:
             "缺少 net-transactions.json；设置 DATA_DIR 指向包含它的目录"
         )
     return found
+
+
+def require_evidence_dir() -> pathlib.Path:
+    """找到包含 *.eml 账单邮件的目录，缺失则跳过。"""
+    candidates = []
+    env_dir = os.environ.get("EVIDENCE_DIR")
+    if env_dir:
+        candidates.append(pathlib.Path(env_dir))
+    for base in CANDIDATES:
+        candidates.append(base / "evidence" / "cmb-email")
+    for directory in candidates:
+        if directory.is_dir() and list(directory.glob("*.eml")):
+            return directory
+    raise unittest.SkipTest(
+        "缺少 *.eml 账单邮件；设置 EVIDENCE_DIR 指向 evidence/cmb-email 目录"
+    )

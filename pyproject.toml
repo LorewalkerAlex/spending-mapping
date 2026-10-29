@@ -3,7 +3,9 @@ name = "spending-mapping"
 version = "0.1.0"
 description = "把信用卡账单变成 Cashew 交易的导入与映射服务"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "beautifulsoup4>=4.12,<5",
+]
 
 [tool.ruff]
 line-length = 100

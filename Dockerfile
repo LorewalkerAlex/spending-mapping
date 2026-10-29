@@ -8,4 +8,6 @@ WORKDIR /app
 
 COPY src ./src
 
+RUN pip install --no-cache-dir beautifulsoup4==4.12.3
+
 ENTRYPOINT ["python", "-m", "spending_mapping"]
