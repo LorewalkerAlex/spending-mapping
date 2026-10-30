@@ -3,7 +3,6 @@
 data
 tests
 docs
-config
 examples
 __pycache__
 *.pyc

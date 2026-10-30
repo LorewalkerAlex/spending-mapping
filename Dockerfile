@@ -6,8 +6,9 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-COPY src ./src
-
 RUN pip install --no-cache-dir beautifulsoup4==4.12.3
+
+COPY src ./src
+COPY config ./config
 
 ENTRYPOINT ["python", "-m", "spending_mapping"]

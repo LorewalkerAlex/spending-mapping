@@ -9,10 +9,14 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
-CONFIG_DIR = Path(__file__).resolve().parents[2] / "config"
+# 镜像里的布局是 /app/src/spending_mapping + /app/config；本地是仓库根下的 config。
+# 允许 CONFIG_DIR 覆盖，避免依赖目录层级。
+_override = os.environ.get("CONFIG_DIR")
+CONFIG_DIR = Path(_override) if _override else Path(__file__).resolve().parents[2] / "config"
 CATEGORIES_FILE = CONFIG_DIR / "categories.json"
 
 
