@@ -80,30 +80,43 @@ def apply_category(
     batch_size: int = BATCH_SIZE,
 ) -> int:
     """把某个商户名下的所有已入账交易改成指定分类，并记日志。"""
+    return apply_categories(client, {name: category_fk}, log, apply=apply, batch_size=batch_size)
+
+
+def apply_categories(
+    client,
+    decisions: dict[str, str],
+    log: ReviewLog,
+    *,
+    apply: bool = True,
+    batch_size: int = BATCH_SIZE,
+) -> int:
+    """批量应用「商户名 → 分类」，只拉一次远端。"""
+    if not decisions:
+        return 0
     changes, _ = client.pull_all()
     alive = remote_alive(changes)
-    targets = [
-        change for pk, change in alive.items()
-        if pk.startswith(IMPORTED_PREFIX)
-        and str((change.get("payload") or {}).get("name") or "").strip() == name
-    ]
-    if not targets:
-        return 0
-
     seq = TimestampSequence()
     updates = []
-    for change in targets:
-        payload = dict(change.get("payload") or {})
-        if str(payload.get("categoryFk")) == category_fk:
+
+    for pk, change in alive.items():
+        if not pk.startswith(IMPORTED_PREFIX):
             continue
-        payload["categoryFk"] = category_fk
+        payload = change.get("payload") or {}
+        name = str(payload.get("name") or "").strip()
+        target = decisions.get(name)
+        if target is None or str(payload.get("categoryFk")) == target:
+            continue
+        payload = dict(payload)
+        payload["categoryFk"] = target
         payload["dateTimeModified"] = seq.next()
         updates.append(build_change(payload, payload["dateTimeModified"]))
 
     if apply and updates:
         for batch in push_batches(updates, batch_size):
             client.push(batch)
-    log.record_category(name, category_fk, action="edited")
+    for name, category_fk in decisions.items():
+        log.record_category(name, category_fk, action="edited")
     return len(updates)
 
 

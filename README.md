@@ -69,6 +69,15 @@ python -m spending_mapping apply-refund --record src_xxx --income --category 11 
 
 python -m spending_mapping reset                  # 预览
 python -m spending_mapping reset --yes            # 删除我们导入的交易
+
+python -m spending_mapping web --port 13010       # 审核前端（127.0.0.1）
+```
+
+审核前端绑在 `127.0.0.1:13010`，用 SSH 端口转发访问（不占公网/LAN 路由）：
+
+```bash
+ssh -L 13010:127.0.0.1:13010 eureka@<server>
+# 本地浏览器打开 http://127.0.0.1:13010
 ```
 
 - 写操作默认 dry-run，必须 `--apply` 才落库

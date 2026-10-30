@@ -1,12 +1,27 @@
 name: spending
 
 services:
+  # 常驻：定时拉取邮件落盘
   spending:
     image: ghcr.io/lorewalkeralex/spending:latest
     restart: unless-stopped
     init: true
     # Cashew 只绑在宿主机 127.0.0.1:13004，容器内 127.0.0.1 是它自己，
     # 必须共用宿主机网络才能连上。本服务不监听端口，用 host 网络没有副作用。
+    network_mode: host
+    env_file:
+      - /srv/persistent/secrets/spending/spending.env
+    volumes:
+      - type: bind
+        source: /srv/persistent/data/spending
+        target: /data
+
+  # 审核前端：绑 127.0.0.1:13010，经 SSH 端口转发访问，不开公网/LAN 路由
+  web:
+    image: ghcr.io/lorewalkeralex/spending:latest
+    command: ["web", "--host", "127.0.0.1", "--port", "13010"]
+    restart: unless-stopped
+    init: true
     network_mode: host
     env_file:
       - /srv/persistent/secrets/spending/spending.env

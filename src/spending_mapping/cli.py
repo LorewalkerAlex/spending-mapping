@@ -160,6 +160,13 @@ def cmd_reset(args: argparse.Namespace) -> int:
     return 0 if not left else 2
 
 
+def cmd_web(args: argparse.Namespace) -> int:
+    from .web import serve
+
+    serve(args.host, args.port)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="spending-mapping", description="账单 → Cashew 导入与审核")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -193,6 +200,11 @@ def build_parser() -> argparse.ArgumentParser:
     res.add_argument("--yes", action="store_true")
     res.add_argument("--batch-size", type=int, default=DEFAULT_BATCH)
     res.set_defaults(func=cmd_reset)
+
+    web = sub.add_parser("web", help="启动审核前端（默认 127.0.0.1:13010）")
+    web.add_argument("--host", default="127.0.0.1")
+    web.add_argument("--port", type=int, default=13010)
+    web.set_defaults(func=cmd_web)
 
     return parser
 
