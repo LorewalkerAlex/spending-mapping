@@ -1,4 +1,4 @@
-"""CLI 测试：sync 的 dry-run/apply/limit，reset 只删 src_ 前缀。"""
+"""CLI 测试：import 的 dry-run/limit、review 列表、apply-category、reset 边界。"""
 
 from __future__ import annotations
 
@@ -8,8 +8,8 @@ import unittest
 from pathlib import Path
 
 try:
-    from spending_mapping import cli
-    from spending_mapping.parser import parse_directory
+    from spending_mapping.cli import dispatch
+    from spending_mapping.parser import parse_directory  # noqa: F401
     _HAS_BS4 = True
 except ImportError:
     _HAS_BS4 = False
@@ -37,45 +37,46 @@ class CliTests(unittest.TestCase):
         import shutil
         shutil.rmtree(self.tmp, ignore_errors=True)
 
-    def _run(self, argv):
-        from spending_mapping.cli import dispatch
-        return dispatch(argv)
-
-    def test_sync_dry_run_writes_nothing(self):
-        rc = self._run(["sync"])
-        self.assertEqual(rc, 0)
+    def test_import_dry_run_writes_nothing(self):
+        self.assertEqual(dispatch(["import"]), 0)
         self.assertEqual(len(self.server.state.alive()), 0)
 
-    def test_sync_limit_pushes_subset(self):
-        rc = self._run(["sync", "--apply", "--limit", "5"])
-        self.assertEqual(rc, 0)
+    def test_import_limit(self):
+        self.assertEqual(dispatch(["import", "--apply", "--limit", "5"]), 0)
         self.assertEqual(len(self.server.state.alive()), 5)
 
-    def test_reset_removes_only_imported(self):
-        # 先导入 5 笔，再手工插一条用户交易（UUID）
-        self._run(["sync", "--apply", "--limit", "5"])
+    def test_review_lists_pending(self):
+        dispatch(["import", "--apply", "--limit", "5"])
+        self.assertEqual(dispatch(["review"]), 0)
+
+    def test_apply_category_via_cli(self):
+        dispatch(["import", "--apply", "--limit", "5"])
+        alive = self.server.state.alive()
+        name = list(alive.values())[0]["payload"]["name"]
+        self.assertEqual(dispatch(["apply-category", "--name", name, "--category", "2", "--apply"]), 0)
+        for record in self.server.state.alive().values():
+            if record["payload"]["name"] == name:
+                self.assertEqual(record["payload"]["categoryFk"], "2")
+
+    def test_reset_keeps_user_transactions(self):
+        dispatch(["import", "--apply", "--limit", "5"])
         self.server.state.push([{
             "table": "Transaction", "pk": "11111111-1111-4111-8111-111111111111",
             "deleted": False, "modifiedAt": 9_999_999_999_999,
             "payload": {"transactionPk": "11111111-1111-4111-8111-111111111111", "name": "午饭"},
         }])
-        self.assertEqual(len(self.server.state.alive()), 6)
-
-        rc = self._run(["reset"])
-        self.assertEqual(rc, 1)  # 没有 --yes
-        self.assertEqual(len(self.server.state.alive()), 6)
-
-        rc = self._run(["reset", "--yes"])
-        self.assertEqual(rc, 0)
-        alive = self.server.state.alive()
-        self.assertEqual(list(alive), ["11111111-1111-4111-8111-111111111111"])
+        self.assertEqual(dispatch(["reset"]), 1)  # 未加 --yes
+        self.assertEqual(dispatch(["reset", "--yes"]), 0)
+        self.assertEqual(
+            list(self.server.state.alive()),
+            ["11111111-1111-4111-8111-111111111111"],
+        )
 
     def test_reimport_after_reset(self):
-        self._run(["sync", "--apply", "--limit", "5"])
-        self._run(["reset", "--yes"])
+        dispatch(["import", "--apply", "--limit", "5"])
+        dispatch(["reset", "--yes"])
         self.assertEqual(len(self.server.state.alive()), 0)
-        # 重新导入应再次推出 5 笔
-        self._run(["sync", "--apply", "--limit", "5"])
+        dispatch(["import", "--apply", "--limit", "5"])
         self.assertEqual(len(self.server.state.alive()), 5)
 
 

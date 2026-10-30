@@ -58,20 +58,32 @@ DATA_DIR=/path/to/import-set python run-tests.py
 `python -m spending_mapping` 不带参数时跑常驻拉取服务（容器默认行为）；带子命令时执行对应动作：
 
 ```bash
-python -m spending_mapping sync                # dry-run：只统计会推多少、多少未抵消
-python -m spending_mapping sync --limit 10     # 试点 10 笔
-python -m spending_mapping sync --apply        # 全量导入
-python -m spending_mapping reset               # 预览将删除多少（src_ 前缀）
-python -m spending_mapping reset --yes         # 真正删除
+python -m spending_mapping import                 # dry-run：只统计会导多少
+python -m spending_mapping import --limit 10 --apply
+python -m spending_mapping import --apply         # 全量导入（分类全为「其他」）
+
+python -m spending_mapping review                 # 列待审分类与待审退款
+python -m spending_mapping apply-category --name 盒马鲜生 --category 2 --apply
+python -m spending_mapping apply-refund --record src_xxx --offset src_yyy --apply
+python -m spending_mapping apply-refund --record src_xxx --income --category 11 --apply
+
+python -m spending_mapping reset                  # 预览
+python -m spending_mapping reset --yes            # 删除我们导入的交易
 ```
 
-- `sync` 默认 dry-run，必须 `--apply` 才写
-- `reset` 只删主键以 `src_` 开头的交易（我们导入的），**用户手记的 UUID 交易不动**
-- 删完可以直接再 `sync --apply` 重新导入
+- 写操作默认 dry-run，必须 `--apply` 才落库
+- `reset` 只删主键 `src_` 开头的交易，**用户手记的 UUID 交易不动**
+- 导入去重双保险：`imported.jsonl` 台账 + 远端已有 pk
 
-## 未映射交易
+## 数据模型
 
-从零起步（不继承旧 merchants/categories 映射）：所有交易的分类初始都落兜底「其他」，名字用解析器的 `display_name`。人工审核逐步把「描述 → 分类」写进 `review-log.jsonl`，越审越少。审核粒度支持批量（按 description）与单笔。
+| 文件（`DATA_DIR` 下） | 作用 |
+| --- | --- |
+| `imported.jsonl` | 入账台账，append-only（imported/deleted 事件） |
+| `review-log.jsonl` | 审核决策，append-only（分类：商户名→pk；退款：offset/income） |
+| `evidence/cmb-email/*.eml` | 账单原件 |
+
+**导入与审核是两步**：导入只做「解析 → 净额 → 清洗名字 → 去重 → 推送」，分类一律落兜底「其他」；审核时再从 Cashew 拉回现值，按商户名分组逐条决策。这样导入不依赖分类拍板，审核看到的也是账本真实状态。
 
 ## 部署（Docker Compose）
 

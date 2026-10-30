@@ -1,9 +1,7 @@
-"""流水线：解析结果 → 净额 → 映射 → payload → 推送 Cashew。
+"""导入：解析 → 净额 → 清洗名字 → 去重 → 推送 Cashew。
 
-从零口径：
-  - 商户身份与交易名都取解析器的 `display_name`
-  - 分类由 MappingStore 决定，无规则时落兜底「其他」
-  - 未抵消的退款/抵扣不静默丢弃，记入审计并计数
+新模型下导入**不做分类决策**：名字取 `display_name`，分类一律落兜底「其他」，
+审核是独立的一步（见 review.py）。去重双保险：入账台账 + 远端已有 pk。
 """
 
 from __future__ import annotations
@@ -11,8 +9,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from decimal import Decimal
 
+from .categories import load_fallback_pk
 from .engine import MappedTransaction, plan_pushes, push_batches, remote_alive
-from .mapping import MappingStore
+from .ledger import ImportLedger
 from .netting import NettingResult, net_balance
 from .parser import Statement
 from .records import ImportTransaction
@@ -22,33 +21,32 @@ BATCH_SIZE = 200
 
 
 @dataclass(slots=True)
-class PipelineResult:
+class ImportResult:
     net_rows: int = 0
-    unmatched: int = 0
-    unmatched_total: Decimal = Decimal(0)
+    skipped_by_ledger: int = 0
+    skipped_remote: int = 0
     planned: int = 0
     pushed: int = 0
     conflicts: int = 0
+    unmatched: int = 0
+    unmatched_total: Decimal = Decimal(0)
 
 
-def build_items(
-    statements: list[Statement],
-    mapping: MappingStore,
-) -> tuple[list[MappedTransaction], NettingResult]:
-    """把解析结果压成待推送交易：净额后剩余额大于 0 的消费。"""
+def build_items(statements: list[Statement]) -> tuple[list[MappedTransaction], NettingResult]:
+    """净额后剩余额大于 0 的消费，名字用 display_name，分类用兜底。"""
     records = [record for statement in statements for record in statement.records]
     netted = net_balance(records)
+    fallback = load_fallback_pk()
 
     items: list[MappedTransaction] = []
     for spend in netted.spends:
         record = spend.record
-        decision = mapping.resolve(record.description, record.display_name)
         txn = ImportTransaction(
             source_record_id=record.record_id,
             date=record.txn_date,
             merchant=record.display_name,
             category="",
-            amount=-spend.remaining,  # 账单里消费为正，Cashew 要负数=支出
+            amount=-spend.remaining,  # 账单消费为正，Cashew 要负数=支出
             gross=spend.gross,
             offset=spend.offset_total,
             note="",
@@ -57,35 +55,56 @@ def build_items(
         items.append(
             MappedTransaction(
                 txn=txn,
-                category_pk=decision.category_fk,
-                name=decision.name,
+                category_pk=fallback,
+                name=record.display_name,
             )
         )
     return items, netted
 
 
-def run_pipeline(
+def import_transactions(
     client,
     statements: list[Statement],
-    mapping: MappingStore,
+    ledger: ImportLedger,
     *,
-    exclude: set[str] | None = None,
-    seq: TimestampSequence | None = None,
+    apply: bool = False,
+    limit: int = 0,
     batch_size: int = BATCH_SIZE,
-) -> PipelineResult:
-    """对齐远端后按批推送，返回统计。调用方负责 client 的登录态。"""
-    items, netted = build_items(statements, mapping)
-    remote = remote_alive(client.pull_all()[0])
-    plan = plan_pushes(items, remote, exclude=exclude or set(), seq=seq or TimestampSequence())
-
-    result = PipelineResult(
+    seq: TimestampSequence | None = None,
+) -> ImportResult:
+    items, netted = build_items(statements)
+    result = ImportResult(
         net_rows=len(items),
         unmatched=len(netted.discarded),
         unmatched_total=-sum((Decimal(r.amount) for r in netted.discarded), Decimal(0)),
-        planned=len(plan),
     )
+
+    pending = [item for item in items if not ledger.is_imported(item.pk)]
+    result.skipped_by_ledger = len(items) - len(pending)
+
+    remote = remote_alive(client.pull_all()[0])
+    before = len(pending)
+    pending = [item for item in pending if item.pk not in remote]
+    result.skipped_remote = before - len(pending)
+
+    if limit:
+        pending = pending[:limit]
+
+    plan = plan_pushes(pending, remote, exclude=set(), seq=seq or TimestampSequence())
+    result.planned = len(plan)
+    if not apply or not plan:
+        return result
+
     for batch in push_batches(plan, batch_size):
         response = client.push(batch)
         result.pushed += len(batch)
         result.conflicts += int(response.get("conflictCount", 0))
+
+    for change in plan:
+        payload = change["payload"]
+        ledger.mark_imported(
+            change["pk"],
+            amount=str(payload["amount"]),
+            name=str(payload["name"]),
+        )
     return result
