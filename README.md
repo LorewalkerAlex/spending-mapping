@@ -53,6 +53,22 @@ DATA_DIR=/path/to/import-set python run-tests.py
 - Cashew **没有商户实体**，按 `name` 分组就是统计口径；商户名归一等于定义统计单元
 - 服务端按 `modifiedAt` 做 last-write-wins，旧时间戳被丢弃，超前服务器时间 2 分钟会被夹紧
 
+## 命令行
+
+`python -m spending_mapping` 不带参数时跑常驻拉取服务（容器默认行为）；带子命令时执行对应动作：
+
+```bash
+python -m spending_mapping sync                # dry-run：只统计会推多少、多少未抵消
+python -m spending_mapping sync --limit 10     # 试点 10 笔
+python -m spending_mapping sync --apply        # 全量导入
+python -m spending_mapping reset               # 预览将删除多少（src_ 前缀）
+python -m spending_mapping reset --yes         # 真正删除
+```
+
+- `sync` 默认 dry-run，必须 `--apply` 才写
+- `reset` 只删主键以 `src_` 开头的交易（我们导入的），**用户手记的 UUID 交易不动**
+- 删完可以直接再 `sync --apply` 重新导入
+
 ## 未映射交易
 
 从零起步（不继承旧 merchants/categories 映射）：所有交易的分类初始都落兜底「其他」，名字用解析器的 `display_name`。人工审核逐步把「描述 → 分类」写进 `review-log.jsonl`，越审越少。审核粒度支持批量（按 description）与单笔。
