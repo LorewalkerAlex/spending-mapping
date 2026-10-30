@@ -227,7 +227,7 @@ tr.done{opacity:.45}
     <div class="row">
       <input type="search" id="q" placeholder="搜索商户名…" style="width:240px">
       <button class="ghost" id="applyAll">应用所有已选</button>
-      <span class="hint">建议值已预选，可改；应用后立即写回 Cashew。</span>
+      <span class="hint">「建议」只是提示，点它才填进下拉框；应用后立即写回 Cashew。</span>
     </div>
     <table><thead><tr><th>商户</th><th>笔数</th><th class="num">金额</th><th>分类</th><th></th></tr></thead>
     <tbody id="cat-body"></tbody></table>
@@ -246,17 +246,21 @@ const money=v=>Number(v).toFixed(2);
 function opts(sel){
   return CATS.map(c=>`<option value="${c.pk}" ${c.pk===sel?'selected':''}>${c.name}</option>`).join('');
 }
+function catName(pk){ const c=CATS.find(x=>x.pk===pk); return c?c.name:''; }
 function renderCat(){
   const q=$('#q').value.trim().toLowerCase();
   const rows=MERCH.filter(m=>!q||m.name.toLowerCase().includes(q));
   $('#cat-body').innerHTML=rows.map(m=>{
     const idx=MERCH.indexOf(m);
+    const badge=m.suggested_fk
+      ? `<span class="badge adopt" data-i="${idx}" title="点击采纳">建议 ${catName(m.suggested_fk)}</span>`
+      : '';
     return `<tr data-i="${idx}">
-      <td>${m.name}${m.suggested_fk?'<span class="badge">建议</span>':''}</td>
+      <td>${m.name}${badge}</td>
       <td class="num">${m.count}</td>
       <td class="num">${money(m.total)}</td>
-      <td><select class="sel">${opts(m.suggested_fk||'')}</select></td>
-      <td><button class="apply" ${m.suggested_fk?'':'disabled'}>应用</button></td>
+      <td><select class="sel"><option value="">— 选择 —</option>${opts('')}</select></td>
+      <td><button class="apply" disabled>应用</button></td>
     </tr>`;
   }).join('');
   $('#ncat').textContent=`(${MERCH.length})`;
@@ -294,6 +298,17 @@ document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
   document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===t));
   $('#cat-panel').hidden = tab!=='cat';
   $('#ref-panel').hidden = tab!=='ref';
+});
+$('#cat-body').addEventListener('change',e=>{
+  if(!e.target.classList.contains('sel')) return;
+  const tr=e.target.closest('tr');
+  tr.querySelector('.apply').disabled = !e.target.value;
+});
+$('#cat-body').addEventListener('click',e=>{
+  if(!e.target.classList.contains('adopt')) return;
+  const tr=e.target.closest('tr'); const i=+tr.dataset.i;
+  tr.querySelector('.sel').value = MERCH[i].suggested_fk;
+  tr.querySelector('.apply').disabled = !MERCH[i].suggested_fk;
 });
 $('#cat-body').addEventListener('click',async e=>{
   if(!e.target.classList.contains('apply')) return;
