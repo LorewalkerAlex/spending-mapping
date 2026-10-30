@@ -25,12 +25,13 @@ BATCH_SIZE = 200
 
 @dataclass(frozen=True, slots=True)
 class MappedTransaction:
-    """一笔"应然"交易：导入集记录 + 已解析的分类/钱包。"""
+    """一笔"应然"交易：导入集记录 + 已解析的分类/钱包/交易名。"""
 
     txn: ImportTransaction
     category_pk: str
     wallet_pk: str = "0"
     income: bool = False
+    name: str | None = None
 
     @property
     def pk(self) -> str:
@@ -66,6 +67,7 @@ def _payload_for(item: MappedTransaction, modified_ms: int) -> dict:
         wallet_pk=item.wallet_pk,
         modified_ms=modified_ms,
         income=item.income,
+        name=item.name,
     )
 
 
